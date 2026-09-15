@@ -26,3 +26,8 @@ Thumbs.db
 Desktop.ini
 
 # Add Android-specific rules when the Android project is created.
+
+# Local test videos (keep only the directory placeholder)
+/data/videos/*
+!/data/videos/.gitkeep
+*.[mM][pP]4

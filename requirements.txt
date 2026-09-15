@@ -1,0 +1,2 @@
+# No dependencies selected yet.
+# Add required packages and versions when implementing Vision features.

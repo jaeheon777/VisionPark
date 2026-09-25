@@ -13,8 +13,12 @@ WINDOW_NAME = "VisionPark - Video Input (q: quit)"
 DEFAULT_FPS = 30.0
 
 
-def play_video(path: Path) -> int:
-    """Return 0 on completion or user exit, and 1 for invalid input."""
+def play_video(path: Path, *, processor_factory=None) -> int:
+    """Play frames, optionally processed by a callable from processor_factory.
+
+    Return 0 on completion/user exit and 1 on input or processing failure.
+    The factory runs once after validation, outside the playback timer.
+    """
     if not path.is_file():
         print(f"오류: 영상 파일이 없거나 일반 파일이 아닙니다: {path}", file=sys.stderr)
         return 1
@@ -40,11 +44,15 @@ def play_video(path: Path) -> int:
             print("오류: 영상에서 프레임을 읽을 수 없습니다. 비어 있거나 손상된 파일인지 확인해 주세요.", file=sys.stderr)
             return 1
 
+        # Initialize optional processing only after validating the video.
+        processor = processor_factory() if processor_factory is not None else None
         cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
         window_created = True
         print(f"재생: {path} ({fps:.2f} FPS). 영상 창에서 q를 누르면 종료합니다.")
         deadline = time.perf_counter()
         while True:
+            if processor is not None:
+                frame = processor(frame)
             cv2.imshow(WINDOW_NAME, frame)
             deadline += 1.0 / fps
             # Poll frequently so even low-FPS videos respond promptly to q.
@@ -70,6 +78,9 @@ def play_video(path: Path) -> int:
         return 1
     except KeyboardInterrupt:
         return 0
+    except (RuntimeError, ImportError, MemoryError) as error:
+        print(f"오류: 영상 처리에 필요한 리소스를 사용할 수 없습니다: {error}", file=sys.stderr)
+        return 1
     finally:
         if capture is not None:
             capture.release()

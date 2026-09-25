@@ -1,3 +1,4 @@
 opencv-python==5.0.0.93
 # Required by opencv-python.
 numpy==2.5.3
+ultralytics==8.4.162

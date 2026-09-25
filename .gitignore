@@ -31,3 +31,7 @@ Desktop.ini
 /data/videos/*
 !/data/videos/.gitkeep
 *.[mM][pP]4
+
+# Downloaded model weights and inference output
+*.pt
+/runs/

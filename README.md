@@ -2,7 +2,7 @@
 
 학교 주차장 한 구역을 대상으로 하는 **카메라 기반 실시간 주차 가능 대수 안내 시스템**입니다. 카메라 영상에서 차량을 탐지·추적하고, 가상 Counting Line을 통과하는 차량을 판별하여 주차 현황을 계산하는 것을 목표로 합니다.
 
-> 로컬 MP4 영상 입력, YOLO 기반 차량 탐지·시각화, 차량 추적을 구현했습니다. 가상선 통과 및 카운팅 이후 기능은 아직 구현되지 않았습니다.
+> 로컬 MP4 영상 입력, YOLO 기반 차량 탐지·시각화, 차량 추적, 가상선 통과 및 방향 판정을 구현했습니다. 입출차 카운팅 이후 기능은 아직 구현되지 않았습니다.
 
 ## 프로젝트 목표
 
@@ -23,7 +23,7 @@
 
 ## 예상 시스템 아키텍처
 
-아래 흐름은 설계 방향입니다. 현재는 로컬 영상 입력·재생과 차량 탐지까지 구현되어 있습니다.
+아래 흐름은 설계 방향입니다. 현재는 로컬 영상 입력·재생, 차량 탐지·추적, 가상선 통과 방향 판정까지 구현되어 있습니다.
 
 ```mermaid
 flowchart TD
@@ -41,7 +41,7 @@ flowchart TD
 | --- | --- | --- |
 | Vision | Python, OpenCV, YOLO 기반 Object Detection | Python/OpenCV, Ultralytics YOLOv8n 차량 탐지 구현 |
 | Tracking | Object Tracking | Ultralytics 내장 ByteTrack 구현 |
-| Counting | Virtual Line Crossing 기반 입출차 집계 | 세부 판별 방식 미정 |
+| Counting | Virtual Line Crossing 기반 입출차 집계 | 가상선 통과 및 방향 판정 구현 / 입출차 집계 미구현 |
 | Backend / Database | 주차 현황 저장 및 앱 연동 | 기술 및 통신 방식 미정 |
 | Android | Kotlin, Android Studio | 프로젝트 생성 전 |
 
@@ -57,13 +57,15 @@ VisionPark/
 ├── vision/
 │   ├── video_input.py
 │   ├── vehicle_detection.py
-│   └── vehicle_tracking.py
+│   ├── vehicle_tracking.py
+│   └── line_crossing.py
 ├── data/videos/
 │   └── .gitkeep
 ├── tests/
 │   ├── test_video_input.py
 │   ├── test_vehicle_detection.py
-│   └── test_vehicle_tracking.py
+│   ├── test_vehicle_tracking.py
+│   └── test_line_crossing.py
 ├── backend/
 │   └── .gitkeep
 ├── android/
@@ -93,8 +95,8 @@ VisionPark/
 - [x] YOLO 기반 차량 탐지 구현 및 자동 테스트
 - [ ] 실제 영상에서 차량 탐지 최종 검증
 - [x] Tracking 방식 선정 및 차량 추적 자동 테스트
-- [ ] 실제 영상에서 Track ID 유지 최종 확인
-- [ ] 가상 Counting Line 통과와 이동 방향 판별
+- [x] 실제 영상에서 Track ID 유지 최종 확인
+- [x] 가상 Counting Line 통과와 이동 방향 판별
 - [ ] 입출차 집계 및 잔여 주차 공간 계산·검증
 - [ ] Backend / Database 기술 선정 및 연동 구현
 - [ ] Android 애플리케이션 구현
@@ -104,7 +106,7 @@ VisionPark/
 
 로컬 MP4 영상을 OpenCV 창에 표시하며, 영상 FPS와 프레임 처리 시간을 반영해 원본 속도에 가깝게 재생합니다. FPS가 유효하지 않으면 안내 후 30 FPS를 사용합니다. 영상 창에서 `q`를 누르거나 재생이 끝나면 리소스를 해제하고 창을 닫습니다. 잘못된 입력에는 오류 메시지와 종료 코드 1을 반환합니다.
 
-차량 탐지는 car, motorcycle, bus, truck만 표시하며 Bounding Box와 클래스명·confidence를 출력합니다. 차량 추적 실행 시 Track ID도 표시합니다. Line Crossing, Counting, Backend, Database 및 Android 애플리케이션은 미구현 상태입니다. 오디오 재생은 지원하지 않습니다. OpenCV는 재생 중 디코딩 실패와 영상 끝을 동일한 읽기 결과로 반환하므로 두 경우 모두 재생을 종료합니다.
+차량 탐지는 car, motorcycle, bus, truck만 표시하며 Bounding Box와 클래스명·confidence를 출력합니다. 차량 추적 실행 시 Track ID도 표시합니다. Line Crossing 방향 판정은 구현되었으며, Counting, Backend, Database 및 Android 애플리케이션은 미구현 상태입니다. 오디오 재생은 지원하지 않습니다. OpenCV는 재생 중 디코딩 실패와 영상 끝을 동일한 읽기 결과로 반환하므로 두 경우 모두 재생을 종료합니다.
 
 ## 기본 실행 방법
 
@@ -156,3 +158,19 @@ Ultralytics 8.4.162에 포함된 ByteTrack을 사용하며, `persist=True`로 �
 재생은 기존 MP4 입력 루프를 공유합니다. 원본 FPS를 반영하고, 영상 끝이나 `q` 입력 시 종료하면서 OpenCV 리소스를 정리합니다. 기본 모델 파일이 없으면 첫 실행 때 다운로드될 수 있습니다. 영상과 `.pt` 모델 파일은 Git에서 제외됩니다.
 
 자동 테스트는 모델과 화면 출력을 모의 처리하여 ID 표시, 프레임별 박스 좌표, 차량 클래스 필터, 빈 추적 결과, 오류 처리와 기존 입력·탐지 기능을 확인합니다. 실제 영상에서 차량 이동 중 박스가 따라가는지, 가림이나 차량 교차 때 Track ID가 얼마나 유지되는지는 사용자가 최종 확인해야 합니다.
+
+## 가상선 통과 판정 (Issue #4)
+
+ByteTrack의 Track ID별 이동을 이용해 가상선 통과를 판정합니다. 차량 Bounding Box의 **아래쪽 중앙점(bottom-center)**을 대표 지점으로 사용합니다. 프로그램이 영상 화면에 가상선을 표시하며 원본 MP4는 수정하지 않습니다. 대표 지점의 이동 경로가 유한한 가상선 선분을 실제로 통과한 경우에만 CROSS를 판정합니다.
+
+`--line X1,Y1,X2,Y2`로 선의 두 끝점을 지정합니다. 각 좌표는 영상 크기 대비 0~1 범위의 정규화 좌표이며 `(0,0)`은 왼쪽 위, `(1,1)`은 오른쪽 아래입니다. 선의 첫 끝점에서 둘째 끝점으로 향할 때 외적이 양수인 쪽을 A, 음수인 쪽을 B로 구분합니다. A/B는 현재 기하학적 방향일 뿐 **ENTER/EXIT 의미가 아닙니다**. 통과 이벤트는 콘솔에 `Track ID 1: B -> A CROSS` 형식으로 출력합니다.
+
+가상선 주변 Bounding Box 흔들림에 따른 반복 방향 전환을 줄이기 위해 dead zone과 hysteresis를 사용합니다. 선의 한쪽 확실한 영역에서 반대쪽 확실한 영역에 도달해야 이벤트가 발생합니다. `--line-dead-zone`은 선 양쪽 dead zone의 각 절반 너비를 영상의 짧은 변에 대한 비율로 지정하며 기본값은 `0.02`(2%)입니다. 실제로 차량이 반대 방향으로 다시 통과하면 반대 방향 CROSS가 새로 발생할 수 있습니다. 입출차 누적 카운팅은 아직 구현하지 않았습니다.
+
+수동 검증에 사용한 명령은 다음과 같습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m vision.vehicle_tracking .\data\videos\parking_entry_single.mp4 --line 0.1,0.70,0.9,0.70
+```
+
+`parking_entry_single.mp4`는 `data/videos/`의 로컬 수동 검증 영상이며 Git에 포함되지 않습니다. 지하주차장 진입 단일 차량 영상에서 위 선 설정으로 Track ID 1이 `B -> A CROSS`로 정확히 1회 판정되었습니다. 초기 구현에서는 선 주변 Bounding Box 흔들림으로 A/B 이벤트가 반복됐으나, dead zone 적용 후 동일 조건에서 반복 이벤트가 발생하지 않음을 확인했습니다. 현재 실제 영상 검증은 단일 차량 시나리오이며, 복수 차량과 다양한 입·출차 상황은 추후 추가 영상으로 검증할 예정입니다.

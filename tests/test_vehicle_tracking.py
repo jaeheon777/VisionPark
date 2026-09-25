@@ -115,6 +115,15 @@ class VehicleTrackingTests(unittest.TestCase):
         self.assertIsInstance(tracker, vehicle_tracking.VehicleTracker)
         self.assertEqual(tracker.confidence, 0.4)
 
+    def test_cli_passes_normalized_line_to_tracker(self):
+        with patch.object(sys, "argv", ["vehicle_tracking", "sample.mp4", "--line", "0.1,0.5,0.9,0.5",
+                                        "--line-dead-zone", "0.03"]), \
+             patch.object(vehicle_tracking, "play_video", return_value=0) as play:
+            self.assertEqual(vehicle_tracking.main(), 0)
+        tracker = play.call_args.kwargs["processor_factory"]()
+        self.assertEqual(tracker.crossing.line, vehicle_tracking.NormalizedLine(0.1, 0.5, 0.9, 0.5))
+        self.assertEqual(tracker.crossing.dead_zone, 0.03)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,3 +2,5 @@ opencv-python==5.0.0.93
 # Required by opencv-python.
 numpy==2.5.3
 ultralytics==8.4.162
+# Required by Ultralytics ByteTrack for detection-to-track assignment.
+lap==0.5.13

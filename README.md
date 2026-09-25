@@ -2,7 +2,7 @@
 
 학교 주차장 한 구역을 대상으로 하는 **카메라 기반 실시간 주차 가능 대수 안내 시스템**입니다. 카메라 영상에서 차량을 탐지·추적하고, 가상 Counting Line을 통과하는 차량을 판별하여 주차 현황을 계산하는 것을 목표로 합니다.
 
-> 로컬 MP4 영상 입력과 YOLO 기반 차량 탐지·시각화를 구현했습니다. Tracking 이후 기능은 아직 구현되지 않았습니다.
+> 로컬 MP4 영상 입력, YOLO 기반 차량 탐지·시각화, 차량 추적을 구현했습니다. 가상선 통과 및 카운팅 이후 기능은 아직 구현되지 않았습니다.
 
 ## 프로젝트 목표
 
@@ -40,12 +40,12 @@ flowchart TD
 | 영역 | 예상 기술 및 방식 | 결정 상태 |
 | --- | --- | --- |
 | Vision | Python, OpenCV, YOLO 기반 Object Detection | Python/OpenCV, Ultralytics YOLOv8n 차량 탐지 구현 |
-| Tracking | Object Tracking | 알고리즘 및 라이브러리 미정 |
+| Tracking | Object Tracking | Ultralytics 내장 ByteTrack 구현 |
 | Counting | Virtual Line Crossing 기반 입출차 집계 | 세부 판별 방식 미정 |
 | Backend / Database | 주차 현황 저장 및 앱 연동 | 기술 및 통신 방식 미정 |
 | Android | Kotlin, Android Studio | 프로젝트 생성 전 |
 
-차량 탐지 기본 모델은 COCO 사전 학습 YOLOv8n이며, Tracking 방식은 향후 검토하여 선택합니다. Backend와 Database는 요구사항에 따라 결정하며, 현재 특정 서비스나 프레임워크를 전제로 하지 않습니다.
+차량 탐지 기본 모델은 COCO 사전 학습 YOLOv8n이며, Tracking은 설치된 Ultralytics의 ByteTrack을 사용합니다. Backend와 Database는 요구사항에 따라 결정하며, 현재 특정 서비스나 프레임워크를 전제로 하지 않습니다.
 
 ## Repository 구조
 
@@ -56,12 +56,14 @@ VisionPark/
 ├── requirements.txt
 ├── vision/
 │   ├── video_input.py
-│   └── vehicle_detection.py
+│   ├── vehicle_detection.py
+│   └── vehicle_tracking.py
 ├── data/videos/
 │   └── .gitkeep
 ├── tests/
 │   ├── test_video_input.py
-│   └── test_vehicle_detection.py
+│   ├── test_vehicle_detection.py
+│   └── test_vehicle_tracking.py
 ├── backend/
 │   └── .gitkeep
 ├── android/
@@ -90,7 +92,8 @@ VisionPark/
 - [x] 로컬 MP4 영상 입력 및 FPS 기반 재생
 - [x] YOLO 기반 차량 탐지 구현 및 자동 테스트
 - [ ] 실제 영상에서 차량 탐지 최종 검증
-- [ ] Tracking 방식 선정 및 차량 추적 검증
+- [x] Tracking 방식 선정 및 차량 추적 자동 테스트
+- [ ] 실제 영상에서 Track ID 유지 최종 확인
 - [ ] 가상 Counting Line 통과와 이동 방향 판별
 - [ ] 입출차 집계 및 잔여 주차 공간 계산·검증
 - [ ] Backend / Database 기술 선정 및 연동 구현
@@ -101,7 +104,7 @@ VisionPark/
 
 로컬 MP4 영상을 OpenCV 창에 표시하며, 영상 FPS와 프레임 처리 시간을 반영해 원본 속도에 가깝게 재생합니다. FPS가 유효하지 않으면 안내 후 30 FPS를 사용합니다. 영상 창에서 `q`를 누르거나 재생이 끝나면 리소스를 해제하고 창을 닫습니다. 잘못된 입력에는 오류 메시지와 종료 코드 1을 반환합니다.
 
-차량 탐지는 car, motorcycle, bus, truck만 표시하며 Bounding Box와 클래스명·confidence를 출력합니다. Tracking, Line Crossing, Counting, Backend, Database 및 Android 애플리케이션은 미구현 상태입니다. 오디오 재생은 지원하지 않습니다. OpenCV는 재생 중 디코딩 실패와 영상 끝을 동일한 읽기 결과로 반환하므로 두 경우 모두 재생을 종료합니다.
+차량 탐지는 car, motorcycle, bus, truck만 표시하며 Bounding Box와 클래스명·confidence를 출력합니다. 차량 추적 실행 시 Track ID도 표시합니다. Line Crossing, Counting, Backend, Database 및 Android 애플리케이션은 미구현 상태입니다. 오디오 재생은 지원하지 않습니다. OpenCV는 재생 중 디코딩 실패와 영상 끝을 동일한 읽기 결과로 반환하므로 두 경우 모두 재생을 종료합니다.
 
 ## 기본 실행 방법
 
@@ -138,3 +141,18 @@ VisionPark/
 자동 테스트는 임시 MP4를 생성·디코딩하고 YOLO 결과와 GUI를 모의 처리합니다. 모델 다운로드 없이 차량 필터, Bounding Box·confidence 표시, 모델 로딩·추론 오류, FPS 대기 및 리소스 해제를 검증합니다. 실제 학습 가중치의 탐지 정확도와 실제 창 동작은 직접 준비한 영상으로 최종 확인하세요.
 
 추론 API 참고: [Ultralytics Predict 문서](https://docs.ultralytics.com/modes/predict/).
+
+## 차량 추적 실행 (Issue #3)
+
+프로젝트 루트에서 로컬 MP4 파일을 지정합니다. 기존 차량 탐지 명령은 그대로 사용할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m vision.vehicle_tracking .\data\videos\sample.mp4
+.\.venv\Scripts\python.exe -m vision.vehicle_tracking ".\data\videos\sample.mp4" --model ".\yolov8n.pt" --confidence 0.4
+```
+
+Ultralytics 8.4.162에 포함된 ByteTrack을 사용하며, `persist=True`로 연속 프레임 사이 추적 상태를 유지합니다. 탐지와 추적 대상은 car, motorcycle, bus, truck으로 제한됩니다. ByteTrack의 저신뢰 탐지 재연결을 위해 추적 입력 confidence는 0.1로 고정하며, `--confidence`는 화면에 표시할 최소 confidence로만 적용합니다. 따라서 `--confidence`를 0.1보다 낮게 설정해도 추적 입력에서 제외된 탐지는 표시되지 않습니다. 추적된 Bounding Box에는 클래스명, Track ID, confidence가 표시됩니다. 추적 ID가 아직 할당되지 않은 탐지 결과는 표시하지 않습니다. ByteTrack에서 사용하는 `lap` 패키지는 `requirements.txt`에 포함되어 있습니다.
+
+재생은 기존 MP4 입력 루프를 공유합니다. 원본 FPS를 반영하고, 영상 끝이나 `q` 입력 시 종료하면서 OpenCV 리소스를 정리합니다. 기본 모델 파일이 없으면 첫 실행 때 다운로드될 수 있습니다. 영상과 `.pt` 모델 파일은 Git에서 제외됩니다.
+
+자동 테스트는 모델과 화면 출력을 모의 처리하여 ID 표시, 프레임별 박스 좌표, 차량 클래스 필터, 빈 추적 결과, 오류 처리와 기존 입력·탐지 기능을 확인합니다. 실제 영상에서 차량 이동 중 박스가 따라가는지, 가림이나 차량 교차 때 Track ID가 얼마나 유지되는지는 사용자가 최종 확인해야 합니다.

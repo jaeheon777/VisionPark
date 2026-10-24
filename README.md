@@ -45,7 +45,7 @@ flowchart TD
 | Backend / Database | 주차 현황 저장 및 앱 연동 | 기술 및 통신 방식 미정 |
 | Android | Kotlin, Android Studio | 프로젝트 생성 전 |
 
-차량 탐지 기본 모델은 COCO 사전 학습 YOLOv8n이며, Tracking은 설치된 Ultralytics의 ByteTrack을 사용합니다. Backend와 Database는 추후에 따라 결정하며, 현재 특정 서비스나 프레임워크를 전제로 하지 않았습니다.
+차량 탐지 기본 모델은 COCO 사전 학습 YOLOv8n이며, Tracking은 설치된 Ultralytics의 ByteTrack을 사용합니다. Backend와 Database는 추후에 결정하며, 현재 특정 서비스나 프레임워크를 전제로 하지 않았습니다.
 
 ## Repository 구조
 
